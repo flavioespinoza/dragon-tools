@@ -206,7 +206,6 @@ class CandleStickChartWithGannFan extends React.Component {
 
     console.log(this.state.fans)
 
-
   }
 
   handleDrawLine(xyValue) {
