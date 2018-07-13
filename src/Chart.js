@@ -32,6 +32,8 @@ import {
   getInteractiveNodes,
 } from './interactiveutils'
 
+const log = require('ololog').configure({locate: false})
+
 class CandleStickChartWithGannFan extends React.Component {
   constructor(props) {
     super(props)
@@ -52,12 +54,7 @@ class CandleStickChartWithGannFan extends React.Component {
 
     }
   }
-  saveInteractiveNode(node) {
-    this.node = node
-  }
-  saveCanvasNode(node) {
-    this.canvasNode = node
-  }
+
   componentDidMount() {
     document.addEventListener('keyup', this.onKeyPress)
     const chartHeight = document.getElementById('chart').clientHeight
@@ -70,27 +67,10 @@ class CandleStickChartWithGannFan extends React.Component {
   componentWillUnmount() {
     document.removeEventListener('keyup', this.onKeyPress)
   }
-  handleSelection(interactives) {
-    const state = toObject(interactives, each => {
-      return [
-        'fans',
-        each.objects,
-      ]
-    })
-    this.setState(state)
-  }
-  onDrawComplete(fans) {
-    // this gets called on
-    // 1. draw complete of drawing object
-    // 2. drag complete of drawing object
-    this.setState({
-      enableInteractiveObject: false,
-      fans
-    })
-  }
+
   onKeyPress(e) {
     const keyCode = e.which
-    console.log(keyCode)
+    // console.log(keyCode)
     switch (keyCode) {
       case 8: // DEL Mac
       case 46: { // DEL PC
@@ -121,12 +101,93 @@ class CandleStickChartWithGannFan extends React.Component {
       }
     }
   }
+
+
+  saveInteractiveNode(node) {
+    log.red('saveInteractiveNode(node)')
+    console.log(node)
+    this.node = node
+  }
+  saveCanvasNode(node) {
+    // console.log('saveCanvasNode(node)')
+    // console.log(node)
+    this.canvasNode = node
+  }
+
+  handleSelection(interactives) {
+
+    // log.cyan('handleSelection(interactives)')
+    // console.log(interactives)
+
+    const state = toObject(interactives, each => {
+      return [
+        'fans',
+        each.objects,
+      ]
+    })
+    // log.cyan('handleSelection(interactives) --> state')
+    // console.log(state)
+
+    this.setState(state)
+
+  }
+  onDrawComplete(fans) {
+
+    const { type, data: initialData, width, ratio } = this.props
+
+    const nodes = this.getInteractiveNodes()
+    const gann_fan_1 = nodes.GannFan_1.node
+    const GannFans = new Promise(function (resolve) {
+      resolve(gann_fan_1.nodes)
+
+    })
+
+    GannFans.then(function (EachGannFan) {
+
+      for (let i = 0; i < EachGannFan.length; i++) {
+
+        let startXY = EachGannFan[i].nodes.fan.props.startXY
+        let endXY = EachGannFan[i].nodes.fan.props.endXY
+
+        let startX = startXY[0]
+        let endX = endXY[0]
+
+        let startY = startXY[1]
+        let endY = endXY[1]
+
+        let sDate = initialData[startX].date //start date
+        let eDate = initialData[endX].date // end date
+
+        log.white(i, ' ---------------------------')
+        log.cyan(i, ' ---------------------------')
+
+        // console.log('EachGannFan[' + i + '].nodes: ', EachGannFan[i].nodes.fan.props)
+
+        log.green('sDate: ', sDate)
+        log.lightRed('eDate: ', eDate)
+
+        // console.log('startXY: ', startXY)
+        // console.log('..endXY: ', endXY)
+
+        log.white(i, ' ---------------------------')
+
+
+      }
+
+    })
+
+    this.setState({
+      enableInteractiveObject: false,
+      fans
+    })
+
+  }
+
   render() {
     const { type, data: initialData, width, ratio } = this.props
     const { fans } = this.state
 
-    const xScaleProvider = discontinuousTimeScaleProvider
-      .inputDateAccessor(d => d.date)
+    const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor(d => d.date)
     const {
       data,
       xScale,
@@ -139,6 +200,7 @@ class CandleStickChartWithGannFan extends React.Component {
     const xExtents = [start, end]
 
     return (
+
       <ChartCanvas ref={this.saveCanvasNode}
                    height={this.state.chartHeight}
                    width={width}
@@ -156,24 +218,22 @@ class CandleStickChartWithGannFan extends React.Component {
                yExtents={[d => [d.high, d.low]]}
                padding={{ top: 10, bottom: 20 }}>
 
-          {/*<YAxis axisAt='right' orient='right' ticks={5} />*/}
-          {/*<XAxis axisAt='bottom' orient='bottom'/>*/}
+          <YAxis axisAt='right' orient='right' ticks={5} />
+          <XAxis axisAt='bottom' orient='bottom'/>
 
-          {/*<MouseCoordinateY at='right' orient='right' displayFormat={format('.2f')} />*/}
+          <MouseCoordinateY at='right' orient='right' displayFormat={format('.2f')} />
 
 					<CandlestickSeries />
 
-
-
           <GannFan ref={this.saveInteractiveNodes('GannFan', 1)}
                    enabled={this.state.enableInteractiveObject}
-                   onStart={() => console.log('START')}
+                   // onStart={() => console.log('START')}
                    onComplete={this.onDrawComplete}
                    fans={fans} />
-           
+
         </Chart>
         
-        {/*<CrossHairCursor />*/}
+        <CrossHairCursor />
         
         <DrawingObjectSelector enabled={!this.state.enableInteractiveObject}
                                getInteractiveNodes={this.getInteractiveNodes}
