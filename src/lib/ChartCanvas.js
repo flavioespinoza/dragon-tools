@@ -1029,7 +1029,7 @@ class ChartCanvas extends Component {
 					type={type}
 					ratio={ratio}
 					width={width} height={height} zIndex={zIndex}/>
-				<svg className={className} width={width} height={height} style={{ position: "absolute", zIndex: (zIndex + 5) }}>
+				<svg id={'svg_main'} className={className} width={width} height={height} style={{ position: "absolute", zIndex: (zIndex + 5) }}>
 					{cursor}
 					<defs>
 						<clipPath id="chart-area-clip">

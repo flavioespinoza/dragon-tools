@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+
 <style>
 
-  body {
+  html, body {
+    width: 100%;
     background-color: gainsboro;
   }
 
@@ -14,10 +16,25 @@
     stroke-linecap: round;
   }
 
+  #svg_wrapper {
+    position: relative;
+    width: 100%;
+    height: 900px;
+    padding-top: 48px;
+  }
+
+  #svg_main {
+    display: block;
+    margin: 0 auto;
+  }
+
 </style>
-<svg width="960" height="500">
-  <rect fill="#fff" width="100%" height="100%"></rect>
-</svg>
+<div id="svg_wrapper">
+  <svg id="svg_main" width="1200" height="900">
+    <rect fill="#fff" width="100%" height="100%"></rect>
+  </svg>
+</div>
+
 <script src="//d3js.org/d3.v4.min.js"></script>
 <script>
 
@@ -30,11 +47,26 @@
       .subject(function() { let p = [d3.event.x, d3.event.y]; return [p, p]; })
       .on("start", dragstarted));
 
+
+  
+  console.log('#svg_main line-drawing', svg)
+
+
   function dragstarted() {
-    let d = d3.event.subject,
-      active = svg.append("path").datum(d),
-      x0 = d3.event.x,
-      y0 = d3.event.y;
+
+    console.log(d3.event.subject)
+    let d = d3.event.subject
+
+    // console.log(d)
+
+
+    let active = svg.append("path").datum(d)
+
+
+    console.log('active', active)
+
+    let x0 = d3.event.x
+    let y0 = d3.event.y
 
     d3.event.on("drag", function() {
       let x1 = d3.event.x,
