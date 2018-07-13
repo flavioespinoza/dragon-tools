@@ -32,6 +32,9 @@ import {
   getInteractiveNodes,
 } from './interactiveutils'
 
+import _ from 'lodash'
+import * as utils from './utils'
+
 const log = require('ololog').configure({locate: false})
 
 class CandleStickChartWithGannFan extends React.Component {
@@ -152,25 +155,27 @@ class CandleStickChartWithGannFan extends React.Component {
         let startX = startXY[0]
         let endX = endXY[0]
 
-        let startY = startXY[1]
-        let endY = endXY[1]
+        let startPrice = utils.__toFixed(startXY[1])
+        let endPrice = utils.__toFixed(endXY[1])
 
-        let sDate = initialData[startX].date //start date
-        let eDate = initialData[endX].date // end date
+        let startDate = initialData[startX].date
+        let endDate = initialData[endX].date
 
         log.white(i, ' ---------------------------')
         log.cyan(i, ' ---------------------------')
 
         // console.log('EachGannFan[' + i + '].nodes: ', EachGannFan[i].nodes.fan.props)
 
-        log.green('sDate: ', sDate)
-        log.lightRed('eDate: ', eDate)
+        log.green(` startDate: `, startDate)
+        log.green(`startPrice: `, startPrice)
+
+        log.lightRed(`   endDate: `, endDate)
+        log.lightRed(`  endPrice: `, endPrice)
 
         // console.log('startXY: ', startXY)
         // console.log('..endXY: ', endXY)
 
         log.white(i, ' ---------------------------')
-
 
       }
 
