@@ -1,7 +1,7 @@
 {
   "name": "dragon-tools",
   "description": "D3 Freehand Drawing Tools for React-Stockcharts",
-  "version": "1.0",
+  "version": "0.0.1",
   "dependencies": {
     "copy-to-clipboard": "^3.0.8",
     "d3": "^5.5.0",
