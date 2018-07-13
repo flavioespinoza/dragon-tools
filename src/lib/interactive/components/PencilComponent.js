@@ -1,0 +1,267 @@
+import React, { Component } from 'react'
+import PropTypes from 'prop-types'
+
+import { pairs } from 'd3-array'
+import { path as d3Path } from 'd3-path'
+
+import GenericChartComponent from '../../GenericChartComponent'
+import { getMouseCanvas } from '../../GenericComponent'
+import { generateLine, isHovering2 } from './StraightLine'
+
+import {
+  isDefined, isNotDefined,
+  noop, hexToRGBA
+} from '../../utils'
+
+const log = require('ololog').configure({locate: false})
+
+class PencilComponent extends Component {
+  constructor (props) {
+    super(props)
+
+    this.renderSVG = this.renderSVG.bind(this)
+    this.isHover = this.isHover.bind(this)
+
+  }
+
+  isHover (moreProps) {
+    const {tolerance, onHover} = this.props
+    const {mouseXY} = moreProps
+    const [mouseX, mouseY] = mouseXY
+
+    let hovering = false
+    if (isDefined(onHover)) {
+
+      const lines = helper(this.props, moreProps)
+
+      for (let i = 0; i < lines.length; i++) {
+        const line1 = lines[i]
+
+        const left = Math.min(line1.x1, line1.x2)
+        const right = Math.max(line1.x1, line1.x2)
+        const top = Math.min(line1.y1, line1.y2)
+        const bottom = Math.max(line1.y1, line1.y2)
+
+        const isWithinLineBounds = mouseX >= left && mouseX <= right
+          && mouseY >= top && mouseY <= bottom
+
+        hovering = isWithinLineBounds
+          && isHovering2(
+            [line1.x1, line1.y1],
+            [line1.x2, line1.y2],
+            mouseXY,
+            tolerance)
+
+        if (hovering) break
+      }
+    }
+    return hovering
+  }
+
+	renderSVG(moreProps) {
+
+    const { stroke, strokeWidth, fillOpacity, fill, strokeOpacity } = this.props
+
+		const lines = helper(this.props, moreProps)
+		const pairsOfLines = pairs(lines)
+
+		const paths = pairsOfLines.map(([line1, line2], idx) => {
+
+		  const ctx = d3Path()
+
+      ctx.moveTo(line1.x1, line1.y1)
+
+      ctx.lineTo(line1.x2, line1.y2)
+      ctx.lineTo(line2.x2, line2.y2)
+
+      ctx.closePath()
+
+      let d = ctx.toString()
+
+      return (
+        <path key={idx}
+              stroke={'black'}
+              fill={fill[idx]}
+              fillOpacity={fillOpacity}
+              d={d}/>
+      )
+    })
+
+		return (
+
+
+			<g>
+
+        {paths}
+
+			</g>
+		)
+	}
+
+	render() {
+
+		const { selected, interactiveCursorClass } = this.props
+		const { onDragStart, onDrag, onDragComplete, onHover, onUnHover } = this.props
+
+		return <GenericChartComponent isHover={this.isHover}
+                                  svgDraw={this.renderSVG}
+                                  canvasToDraw={getMouseCanvas}
+                                  // canvasDraw={this.drawOnCanvas}
+                                  interactiveCursorClass={interactiveCursorClass}
+                                  selected={selected}
+                                  onDragStart={onDragStart}
+                                  onDrag={onDrag}
+                                  onDragComplete={onDragComplete}
+                                  onHover={onHover}
+                                  onUnHover={onUnHover}
+                                  drawOn={['mousemove', 'mouseleave', 'pan', 'drag']} />
+	}
+}
+
+function getLineCoordinates (start, endX, endY, text) {
+  const end = [
+    endX,
+    endY
+  ]
+  return {
+    start, end, text
+  }
+}
+
+function helper (props, moreProps) {
+  const {startXY, endXY} = props
+
+  const {
+    xScale,
+    chartConfig: {yScale}
+  } = moreProps
+  if (isNotDefined(startXY) || isNotDefined(endXY)) {
+    return []
+  }
+  const [x1, y1] = startXY
+  const [x2, y2] = endXY
+
+  const dx = x2 - x1
+  const dy = y2 - y1
+
+  if (dx !== 0 && dy !== 0) {
+    // console.log('modLine ->', startXY, modLine, dx1, dy1)
+    const halfY = getLineCoordinates(
+      startXY,
+      x2,
+      y1 + dy / 2,
+      '2/1'
+    )
+    const oneThirdY = getLineCoordinates(
+      startXY,
+      x2,
+      y1 + dy / 3,
+      '3/1'
+    )
+    const oneFourthY = getLineCoordinates(
+      startXY,
+      x2,
+      y1 + dy / 4,
+      '4/1'
+    )
+    const oneEighthY = getLineCoordinates(
+      startXY,
+      x2,
+      y1 + dy / 8,
+      '8/1'
+    )
+    const halfX = getLineCoordinates(
+      startXY,
+      x1 + dx / 2,
+      y2,
+      '1/2'
+    )
+    const oneThirdX = getLineCoordinates(
+      startXY,
+      x1 + dx / 3,
+      y2,
+      '1/3'
+    )
+    const oneFourthX = getLineCoordinates(
+      startXY,
+      x1 + dx / 4,
+      y2,
+      '1/4'
+    )
+    const oneEighthX = getLineCoordinates(
+      startXY,
+      x1 + dx / 8,
+      y2,
+      '1/8'
+    )
+    const lines = [
+      oneEighthX,
+      oneFourthX,
+      oneThirdX,
+      halfX,
+      {start: startXY, end: endXY, text: '1/1'},
+      halfY,
+      oneThirdY,
+      oneFourthY,
+      oneEighthY
+    ]
+    const lineCoods = lines.map(line => {
+      const {x1, y1, x2, y2} = generateLine({
+        type: 'RAY',
+        start: line.start,
+        end: line.end,
+        xScale,
+        yScale
+      })
+      return {
+        x1: xScale(x1),
+        y1: yScale(y1),
+        x2: xScale(x2),
+        y2: yScale(y2),
+        label: {
+          x: xScale(line.end[0]),
+          y: yScale(line.end[1]),
+          text: line.text
+        }
+      }
+    })
+    return lineCoods
+  }
+  return []
+}
+
+PencilComponent.propTypes = {
+  interactiveCursorClass: PropTypes.string,
+  stroke: PropTypes.string.isRequired,
+  strokeWidth: PropTypes.number.isRequired,
+  fill: PropTypes.arrayOf(PropTypes.string).isRequired,
+  strokeOpacity: PropTypes.number.isRequired,
+  fillOpacity: PropTypes.number.isRequired,
+
+  fontFamily: PropTypes.string.isRequired,
+  fontSize: PropTypes.number.isRequired,
+  fontFill: PropTypes.string.isRequired,
+
+  onDragStart: PropTypes.func.isRequired,
+  onDrag: PropTypes.func.isRequired,
+  onDragComplete: PropTypes.func.isRequired,
+  onHover: PropTypes.func,
+  onUnHover: PropTypes.func,
+
+  defaultClassName: PropTypes.string,
+
+  tolerance: PropTypes.number.isRequired,
+  selected: PropTypes.bool.isRequired
+}
+
+PencilComponent.defaultProps = {
+  onDragStart: noop,
+  onDrag: noop,
+  onDragComplete: noop,
+
+  strokeWidth: 10,
+  tolerance: 4,
+  selected: false
+}
+
+export default PencilComponent

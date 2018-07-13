@@ -76,7 +76,11 @@
 
       if (dx * dx + dy * dy > 100) d.push([x0 = x1, y0 = y1]);
       else d[d.length - 1] = [x1, y1];
-      active.attr("d", line);
+
+      console.log(line)
+      console.log(d)
+      active.attr('d', line)
+
     });
   }
 

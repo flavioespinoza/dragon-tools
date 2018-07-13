@@ -213,6 +213,7 @@ GannFan.defaultProps = {
 		fontFill: "#000000",
 	},
 
+
 	onStart: noop,
 	onComplete: noop,
 	onSelect: noop,

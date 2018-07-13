@@ -24,7 +24,7 @@ import {
 import { fitWidth } from 'react-stockcharts/lib/helper'
 import { DrawingObjectSelector } from 'react-stockcharts/lib/interactive'
 
-import GannFan from './lib/interactive/GannFan'
+import Pencil from './lib/interactive/Pencil'
 
 import { last, toObject } from 'react-stockcharts/lib/utils'
 import {
@@ -39,10 +39,30 @@ import _ from 'lodash'
 import * as utils from './utils'
 import * as d3 from 'd3'
 
+import $ from 'jquery'
+
+import { select } from 'd3-selection'
 import { drag } from 'd3-drag'
+import { line, curveCatmullRom } from 'd3-shape'
+
 import { isDefined, isNotDefined } from './lib/utils'
 
 const log = require('ololog').configure({locate: false})
+
+let d = []
+
+let l = line
+
+
+function subject (x, y) {
+  let p = [x, y]
+  return [p, p]
+}
+
+const svg = select('#svg_main')
+
+let active = svg.append('path').datum(d)
+
 
 class CandleStickChartWithGannFan extends React.Component {
   constructor(props) {
@@ -53,7 +73,6 @@ class CandleStickChartWithGannFan extends React.Component {
 
     this.handleSelection = this.handleSelection.bind(this)
 
-    this.svg = this.svg.bind(this)
     this.drawPath = this.drawPath.bind(this)
 
     this.handleStart = this.handleStart.bind(this)
@@ -70,22 +89,20 @@ class CandleStickChartWithGannFan extends React.Component {
       enableInteractiveObject: true,
       fans: [],
       chartHeight: 1200,
-      svg: null,
-
+      d: [],
     }
   }
 
   componentDidMount () {
 
-    let svg = d3.select('#svg_main')
 
     document.addEventListener('keyup', this.onKeyPress)
     const chartHeight = document.getElementById('chart').clientHeight
 
     this.setState({
-      chartHeight: chartHeight,
-      svg: svg
+      chartHeight: chartHeight
     })
+
   }
 
   componentWillUnmount() {
@@ -166,6 +183,9 @@ class CandleStickChartWithGannFan extends React.Component {
 
     // console.log('handleStart(xyValue)', xyValue)
 
+    let x = xyValue[0]
+    let y = xyValue[1]
+
     const {current} = this.state
 
     if (isNotDefined(current) || isNotDefined(current.startXY)) {
@@ -180,6 +200,46 @@ class CandleStickChartWithGannFan extends React.Component {
         this.onStart(xyValue)
       })
     }
+
+  }
+
+  drawPath (moreProps, e) {
+
+    console.log(e)
+
+    let line = d3.line().curve(d3.curveBasis)
+
+    let mouseXY = moreProps.mouseXY
+
+    let x = mouseXY[0]
+    let y = mouseXY[1]
+
+    let d = d3.event.subject
+
+    let active = svg.append('path').datum(d)
+
+    console.log('active', active)
+
+    let x0 = x
+    let y0 = y
+
+    drag().on('drag', function () {
+
+      console.log('drag')
+
+      let x1 = x
+      let y1 = y
+      let dx = x1 - x0
+      let dy = y1 - y0
+
+      if (dx * dx + dy * dy > 100) d.push([x0 = x1, y0 = y1])
+      else d[d.length - 1] = [x1, y1]
+      console.log(line)
+
+      active.attr('d', line)
+
+    })
+
   }
 
   handleEnd (xyValue, moreProps, e) {
@@ -210,88 +270,14 @@ class CandleStickChartWithGannFan extends React.Component {
 
   handleDrawLine(xyValue) {
 
-    // console.log('handleDrawLine(xyValue)')
-    // console.log(xyValue)
+    let x = xyValue[0]
+    let y = xyValue[1]
 
-    const { current } = this.state;
+    const { type, data: initialData, width, ratio } = this.props
 
-    if (isDefined(current) && isDefined(current.startXY)) {
-      this.mouseMoved = true;
+    const nodes = this.getInteractiveNodes()
 
-      this.setState({
-        current: {
-          startXY: current.startXY,
-          endXY: xyValue,
-        }
-      });
-    }
-  }
-
-  svg (moreProps, e) {
-
-    // console.log(e)
-
-    let mouseXY = moreProps.mouseXY
-
-    let x = mouseXY[0]
-    let y = mouseXY[1]
-
-    this.state.svg.call(drag()
-      .container(function () { return this })
-      .subject(function () {
-        let p = [x, y]
-        console.log('p-----', p)
-        return [p, p]
-      })
-      .on('start', this.drawPath))
-  }
-
-  drawPath (moreProps, e) {
-
-    let line = d3.line().curve(d3.curveBasis)
-
-    let mouseXY = moreProps.mouseXY
-
-    let x = mouseXY[0]
-    let y = mouseXY[1]
-
-    let d = d3.event.subject
-
-    let active = this.svg().append('path').datum(d)
-
-    console.log('active', active)
-
-    let x0 = x
-    let y0 = y
-
-    drag().on('drag', function () {
-
-      console.log('drag')
-
-      let x1 = x
-      let y1 = y
-      let dx = x1 - x0
-      let dy = y1 - y0
-
-      if (dx * dx + dy * dy > 100) d.push([x0 = x1, y0 = y1])
-      else d[d.length - 1] = [x1, y1]
-      console.log(line)
-
-      active.attr('d', line)
-
-    })
-
-  }
-
-  onDrawComplete(fans, moreProps, e) {
-
-    if (fans.length < 1) {
-      return
-    }
-
-    // const { type, data: initialData, width, ratio } = this.props
-    //
-    // const nodes = this.getInteractiveNodes()
+    console.log(nodes)
     // const gann_fan_1 = nodes.GannFan_1.node
     // const GannFans = new Promise(function (resolve) {
     //   resolve(gann_fan_1.nodes)
@@ -333,6 +319,109 @@ class CandleStickChartWithGannFan extends React.Component {
     //   }
     //
     // })
+
+
+    // d.push(subject(x, y))
+    // console.log(d)
+
+
+    // let x0 = xyValue[0]
+    // let y0 = xyValue[1]
+    //
+    // let x1 = x
+    // let y1 = y
+    // let dx = x1 - x0
+    // let dy = y1 - y0
+    //
+    // if (dx * dx + dy * dy > 100) {
+    //
+    //   x0 = x1
+    //   y0 = y1
+    //
+    //   d.push([x0, y0])
+    //
+    // } else {
+    //
+    //   d[d.length - 1] = [x1, y1]
+    //
+    // }
+
+    // console.log(line)
+    // console.log(d)
+
+    // active.attr('d', line)
+
+
+    // line.data()
+    //   .x(function(d) {
+    //     return x(d.date)
+    //   })
+    //   .y(function(d) {
+    //     return y(d.value)
+    //   })
+    //   .curve(curveCatmullRom.alpha(0.5))
+
+    const { current } = this.state;
+
+    if (isDefined(current) && isDefined(current.startXY)) {
+      this.mouseMoved = true;
+
+      this.setState({
+        current: {
+          startXY: current.startXY,
+          endXY: xyValue,
+        }
+      })
+
+    }
+  }
+
+  onDrawComplete(fans, moreProps, e) {
+
+    const { type, data: initialData, width, ratio } = this.props
+
+    const nodes = this.getInteractiveNodes()
+    const gann_fan_1 = nodes.GannFan_1.node
+    const GannFans = new Promise(function (resolve) {
+      resolve(gann_fan_1.nodes)
+
+    })
+
+    GannFans.then(function (EachGannFan) {
+
+      for (let i = 0; i < EachGannFan.length; i++) {
+
+        let startXY = EachGannFan[i].nodes.fan.props.startXY
+        let endXY = EachGannFan[i].nodes.fan.props.endXY
+
+        let startX = startXY[0]
+        let endX = endXY[0]
+
+        let startPrice = utils.__toFixed(startXY[1])
+        let endPrice = utils.__toFixed(endXY[1])
+
+        let startDate = initialData[startX].date
+        let endDate = initialData[endX].date
+
+        log.white(i, ' ---------------------------')
+        log.cyan(i, ' ---------------------------')
+
+        // console.log('EachGannFan[' + i + '].nodes: ', EachGannFan[i].nodes.fan.props)
+
+        log.green(` startDate: `, startDate)
+        log.green(`startPrice: `, startPrice)
+
+        log.lightRed(`   endDate: `, endDate)
+        log.lightRed(`  endPrice: `, endPrice)
+
+        // console.log('startXY: ', startXY)
+        // console.log('..endXY: ', endXY)
+
+        log.white(i, ' ---------------------------')
+
+      }
+
+    })
 
     this.setState({
       enableInteractiveObject: false,
@@ -383,15 +472,21 @@ class CandleStickChartWithGannFan extends React.Component {
 
 					<CandlestickSeries />
 
-          <MouseLocationIndicator enabled={this.state.enableInteractiveObject}
-                                  snap={false}
-                                  r={10}
-                                  stroke={'black'}
-                                  opacity={0.75}
-                                  strokeWidth={2}
-                                  onMouseDown={this.handleStart}
-                                  onClick={this.handleEnd}
-                                  onMouseMove={this.handleDrawLine} />
+          {/*<MouseLocationIndicator enabled={this.state.enableInteractiveObject}*/}
+                                  {/*snap={false}*/}
+                                  {/*r={10}*/}
+                                  {/*stroke={'black'}*/}
+                                  {/*opacity={0.75}*/}
+                                  {/*strokeWidth={2}*/}
+                                  {/*onMouseDown={this.handleStart}*/}
+                                  {/*onClick={this.handleEnd}*/}
+                                  {/*onMouseMove={this.handleDrawLine} />*/}
+
+          <Pencil ref={this.saveInteractiveNodes('GannFan', 1)}
+                  enabled={this.state.enableInteractiveObject}
+                  onStart={() => console.log('Pencil Start')}
+                  onComplete={this.onDrawComplete}
+                  fans={fans} />
 
         </Chart>
         
