@@ -297,7 +297,7 @@ EachPencilStroke.defaultProps = {
 		],
 		fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif',
 		fontSize: 10,
-		fontFill: '#000000',
+		fontFill: '#8f8f8f',
 	},
 
 	onDrag: noop,

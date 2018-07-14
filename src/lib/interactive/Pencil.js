@@ -34,16 +34,22 @@ class Pencil extends Component {
 
     this.nodes = []
     this.state = {}
+
   }
+
   handleDragFan(index, newXYValue) {
+
     this.setState({
       override: {
         index,
         ...newXYValue
       }
     })
+
   }
+
   handleDragFanComplete(moreProps) {
+
     const { override } = this.state
     const { fans } = this.props
 
@@ -59,8 +65,11 @@ class Pencil extends Component {
         this.props.onComplete(newfans, moreProps)
       })
     }
+
   }
+
   handleDrawFan(xyValue) {
+
     const { current } = this.state
 
     if (isDefined(current) && isDefined(current.startXY)) {
@@ -73,8 +82,11 @@ class Pencil extends Component {
         }
       })
     }
+
   }
+
   handleStart(xyValue) {
+
     const { current } = this.state
 
     if (isNotDefined(current) || isNotDefined(current.startXY)) {
@@ -89,8 +101,11 @@ class Pencil extends Component {
         this.props.onStart()
       })
     }
+
   }
+
   handleEnd(xyValyue, moreProps, e) {
+
     const { current } = this.state
     const { fans, appearance } = this.props
 
@@ -108,8 +123,11 @@ class Pencil extends Component {
         this.props.onComplete(newfans, moreProps, e)
       })
     }
+
   }
+
   render() {
+
     const self = this
     const { enabled, appearance } = this.props
     const { currentPositionRadius, currentPositionStroke } = this.props
@@ -193,7 +211,9 @@ class Pencil extends Component {
 
       </g>
     )
+
   }
+
 }
 
 

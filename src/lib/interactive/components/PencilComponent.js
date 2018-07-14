@@ -13,6 +13,12 @@ import {
   noop, hexToRGBA
 } from '../../utils'
 
+import _ from 'lodash'
+import * as d3 from 'd3'
+
+import { testDataCurve } from './test-data-curve'
+import * as utils from '../../../utils'
+
 const log = require('ololog').configure({locate: false})
 
 class PencilComponent extends Component {
@@ -25,14 +31,18 @@ class PencilComponent extends Component {
   }
 
   isHover (moreProps) {
+
     const {tolerance, onHover} = this.props
     const {mouseXY} = moreProps
     const [mouseX, mouseY] = mouseXY
 
     let hovering = false
+
     if (isDefined(onHover)) {
 
       const lines = helper(this.props, moreProps)
+
+      const paths = line_helper(this.props, moreProps)
 
       for (let i = 0; i < lines.length; i++) {
         const line1 = lines[i]
@@ -63,7 +73,12 @@ class PencilComponent extends Component {
     const { stroke, strokeWidth, fillOpacity, fill, strokeOpacity } = this.props
 
 		const lines = helper(this.props, moreProps)
-		const pairsOfLines = pairs(lines)
+
+    // log.cyan(`renderSVG() -----------> lines`)
+    // console.log(lines)
+    // log.cyan(`renderSVG() -----------> lines`)
+
+    const pairsOfLines = pairs(lines)
 
 		const paths = pairsOfLines.map(([line1, line2], idx) => {
 
@@ -128,7 +143,159 @@ function getLineCoordinates (start, endX, endY, text) {
   }
 }
 
+function line_helper (props, moreProps) {
+
+  const {startXY, endXY} = props
+
+  const {
+    xScale,
+    chartConfig: {yScale}
+  } = moreProps
+  if (isNotDefined(startXY) || isNotDefined(endXY)) {
+    return []
+  }
+  const [x1, y1] = startXY
+  const [x2, y2] = endXY
+
+  const dx = x2 - x1
+  const dy = y2 - y1
+
+  /**
+   *
+   * D3 Curve Shit!!!
+   * D3 Curve Shit!!!
+   * D3 Curve Shit!!!
+   *
+   * */
+
+  let parseTime = d3.timeParse('%d-%b-%y')
+
+  let margin = {top: 20, right: 150, bottom: 30, left: 50}
+  let width = 1440 - margin.left - margin.right
+  let height = 900 - margin.top - margin.bottom
+
+  let curveArray = [
+    // {'d3Curve': d3.curveLinear, 'curveTitle': 'curveLinear'},
+    // {'d3Curve': d3.curveStep, 'curveTitle': 'curveStep'},
+    // {'d3Curve': d3.curveStepBefore, 'curveTitle': 'curveStepBefore'},
+    // {'d3Curve': d3.curveStepAfter, 'curveTitle': 'curveStepAfter'},
+    // {'d3Curve': d3.curveBasis, 'curveTitle': 'curveBasis'},
+    // {'d3Curve': d3.curveCardinal, 'curveTitle': 'curveCardinal'},
+    {'d3Curve': d3.curveMonotoneX, 'curveTitle': 'curveMonotoneX'},
+    // {'d3Curve': d3.curveCatmullRom, 'curveTitle': 'curveCatmullRom'}
+  ]
+
+  let x = d3.scaleTime().range([0, width])
+  let y = d3.scaleLinear().range([height, 0])
+
+  let svg = d3.select('body').append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+
+
+  let test_data = new Promise(async function (resolve) {
+    resolve(await testDataCurve())
+  })
+
+  test_data.then(function (data) {
+
+    data.forEach(function (d) {
+
+      d.date = new Date(d.date)
+      d.close = +d.close
+
+    })
+
+    // console.log(data[0])
+
+    let color = d3.scaleOrdinal(d3.schemeCategory10)
+
+    curveArray.forEach(function (daCurve, i) {
+
+      // Scale the range of the data
+      x.domain(d3.extent(data, function (d) { return d.date }))
+      y.domain(d3.extent(data, function (d) { return d.close }))
+
+      let d = d3.line()
+        .curve(daCurve.d3Curve)
+        .x(function (d) {
+          return x(d.date)
+        })
+        .y(function (d) {
+          return y(d.close)
+        })
+
+      console.log(d)
+
+      // Add the paths with different curves.
+      svg.append('path')
+        .datum(data)
+        .attr('class', 'line dpath')
+        .style('stroke', function () { // Add the colours dynamically
+          return daCurve.color = color(daCurve.curveTitle)
+        })
+        .attr('id', 'tag' + i) // assign ID
+        .attr('d', d)
+
+      // Add the Legend
+      svg.append('text')
+        .attr('x', width + 5)  // space legend
+        .attr('y', margin.top + 20 + (i * 20))
+        .attr('class', 'legend')    // style the legend
+        .style('fill', function () { // Add the colours dynamically
+          return daCurve.color = color(daCurve.curveTitle)
+        })
+        .on('click', function () {
+
+          // Determine if current line is visible
+          let active = !daCurve.active
+
+          let newOpacity = active ? 0 : 1
+          // Hide or show the elements based on the ID
+
+          d3.select('#tag' + i)
+            .transition().duration(100)
+            .style('opacity', newOpacity)
+
+          // Update whether or not the elements are active
+          daCurve.active = active
+
+        })
+        .text(daCurve.curveTitle)
+
+      // Add the scatter plot
+      svg.selectAll('dot')
+        .data(data)
+        .enter().append('circle')
+        .attr('r', 4)
+        .attr('cx', function (d) {
+          return x(d.date)
+        })
+        .attr('cy', function (d) {
+          return y(d.close)
+        })
+
+      // Add the X Axis
+      svg.append('g')
+        .attr('class', 'axis')
+        .attr('transform', 'translate(0,' + height + ')')
+        .call(d3.axisBottom(x))
+
+      // Add the Y Axis
+      svg.append('g')
+        .attr('class', 'axis')
+        .call(d3.axisLeft(y))
+
+    })
+
+  })
+
+}
+
 function helper (props, moreProps) {
+
   const {startXY, endXY} = props
 
   const {
@@ -194,6 +361,7 @@ function helper (props, moreProps) {
       y2,
       '1/8'
     )
+
     const lines = [
       oneEighthX,
       oneFourthX,
@@ -205,7 +373,9 @@ function helper (props, moreProps) {
       oneFourthY,
       oneEighthY
     ]
-    const lineCoods = lines.map(line => {
+
+    return lines.map(function (line) {
+
       const {x1, y1, x2, y2} = generateLine({
         type: 'RAY',
         start: line.start,
@@ -213,6 +383,7 @@ function helper (props, moreProps) {
         xScale,
         yScale
       })
+
       return {
         x1: xScale(x1),
         y1: yScale(y1),
@@ -224,8 +395,10 @@ function helper (props, moreProps) {
           text: line.text
         }
       }
+
     })
-    return lineCoods
+
+
   }
   return []
 }
